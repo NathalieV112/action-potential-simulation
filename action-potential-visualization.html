@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Action Potential — Step-by-Step Visualization</title>
+  <style>
+    :root {
+      --bg: #0b0f1a;
+      --surface: #141b2d;
+      --surface2: #1a2438;
+      --border: #2a3a5c;
+      --text: #e8eef8;
+      --muted: #8fa3c4;
+      --accent: #3dd6c6;
+      --accent-dim: #2a9d8f;
+      --na: #ff5c5c;
+      --na-glow: rgba(255, 92, 92, 0.55);
+      --k: #ffd166;
+      --k-glow: rgba(255, 209, 102, 0.55);
+      --pump: #7b68ee;
+      --membrane: #c5d4e8;
+      --intra: #162035;
+      --extra: #0d1424;
+      --voltage-line: #4fc3f7;
+      --highlight: rgba(61, 214, 198, 0.15);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.55;
+    }
+
+    header {
+      padding: 1.5rem 2rem 1rem;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, #101828, var(--bg));
+    }
+
+    header h1 {
+      font-size: 1.45rem;
+      font-weight: 650;
+      letter-spacing: -0.03em;
+    }
+
+    header p {
+      color: var(--muted);
+      font-size: 0.92rem;
+      max-width: 780px;
+      margin-top: 0.35rem;
+    }
+
+    main {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 1.25rem 1.5rem 2rem;
+      display: grid;
+      gap: 1rem;
+    }
+
+    .controls-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      align-items: center;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 0.85rem 1rem;
+    }
+
+    .controls-bar .label {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-right: 0.25rem;
+    }
+
+    button {
+      font: inherit;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 0.45rem 0.95rem;
+      font-size: 0.85rem;
+      transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    }
+
+    button:hover { background: #243050; border-color: #3d5280; }
+    button:active { transform: scale(0.98); }
+
+    button.primary {
+      background: linear-gradient(135deg, var(--accent-dim), var(--accent));
+      border-color: transparent;
+      color: #041612;
+      font-weight: 650;
+    }
+
+    button.primary:hover { filter: brightness(1.08); }
+
+    button.step-btn.active {
+      background: var(--highlight);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    @media (max-width: 900px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,0.02);
+    }
+
+    .panel-head h2 {
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .panel-head .badge {
+      font-size: 0.72rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      background: var(--highlight);
+      color: var(--accent);
+      border: 1px solid rgba(61,214,198,0.35);
+      white-space: nowrap;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+    }
+
+    #membraneCanvas { background: var(--extra); }
+    #voltageCanvas { background: #0e1524; }
+
+    .info-panel {
+      padding: 1rem 1.15rem 1.15rem;
+    }
+
+    .info-panel h3 {
+      font-size: 1.05rem;
+      margin-bottom: 0.35rem;
+      color: var(--accent);
+    }
+
+    .info-panel p {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .info-panel ul {
+      margin-top: 0.65rem;
+      padding-left: 1.1rem;
+      color: var(--text);
+      font-size: 0.88rem;
+    }
+
+    .info-panel li { margin-bottom: 0.3rem; }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem 1.25rem;
+      padding: 0.65rem 1rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .progress-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0 1rem 0.85rem;
+    }
+
+    progress {
+      flex: 1;
+      height: 6px;
+      accent-color: var(--accent);
+    }
+
+    .voltage-readout {
+      font-variant-numeric: tabular-nums;
+      font-size: 0.85rem;
+      color: var(--voltage-line);
+      min-width: 5.5rem;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Action Potential — Ion Flow &amp; Membrane Voltage</h1>
+    <p>
+      Explore each phase of an action potential: resting state maintained by the Na⁺/K⁺ pump,
+      depolarization via Na⁺ influx, repolarization through K⁺ efflux, hyperpolarization,
+      and return to resting potential.
+    </p>
+  </header>
+
+  <main>
+    <div class="controls-bar">
+      <span class="label">Steps</span>
+      <button class="step-btn active" data-step="0">1 · Resting</button>
+      <button class="step-btn" data-step="1">2 · Na⁺ Influx</button>
+      <button class="step-btn" data-step="2">3 · K⁺ Outflux</button>
+      <button class="step-btn" data-step="3">4 · Hyperpolarization</button>
+      <button class="step-btn" data-step="4">5 · Return to Rest</button>
+      <span style="flex:1"></span>
+      <button id="prevBtn" disabled>← Prev</button>
+      <button id="nextBtn">Next →</button>
+      <button class="primary" id="simulateBtn">▶ Simulate Full AP</button>
+      <button id="resetBtn">Reset</button>
+    </div>
+
+    <div class="grid-2">
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Ion Movement Across the Membrane</h2>
+          <span class="badge" id="membraneBadge">Step 1 of 5</span>
+        </div>
+        <canvas id="membraneCanvas" width="620" height="380"></canvas>
+        <div class="legend">
+          <span><i class="dot" style="background:var(--na)"></i> Na⁺ (sodium)</span>
+          <span><i class="dot" style="background:var(--k)"></i> K⁺ (potassium)</span>
+          <span><i class="dot" style="background:var(--pump)"></i> Na⁺/K⁺ pump</span>
+          <span><i class="dot" style="background:var(--membrane)"></i> Lipid bilayer</span>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Membrane Voltage (mV)</h2>
+          <span class="voltage-readout" id="voltageReadout">−70 mV</span>
+        </div>
+        <canvas id="voltageCanvas" width="620" height="380"></canvas>
+        <div class="progress-row">
+          <progress id="simProgress" value="0" max="100"></progress>
+          <span class="voltage-readout" id="timeReadout">t = 0 ms</span>
+        </div>
+      </section>
+    </div>
+
+    <section class="panel info-panel" id="infoPanel">
+      <h3 id="infoTitle">Resting Potential</h3>
+      <p id="infoDesc"></p>
+      <ul id="infoList"></ul>
+    </section>
+  </main>
+
+  <script>
+    // ── Step definitions ──────────────────────────────────────────────
+    const STEPS = [
+      {
+        title: "Resting Potential",
+        desc: "At rest, the membrane sits near −70 mV. The Na⁺/K⁺ ATPase actively transports 3 Na⁺ out and 2 K⁺ in, maintaining steep concentration gradients. Most voltage-gated Na⁺ and K⁺ channels are closed; a small leak of K⁺ helps set the resting potential.",
+        list: [
+          "Na⁺/K⁺ pump runs continuously (3 Na⁺ out, 2 K⁺ in per cycle)",
+          "High K⁺ inside, high Na⁺ outside",
+          "Voltage-gated channels closed — membrane is polarized"
+        ],
+        voltageStart: -70, voltageEnd: -70,
+        naChannelOpen: false, kChannelOpen: false,
+        pumpActive: true, naFlow: "none", kFlow: "none",
+        curveSegment: "rest"
+      },
+      {
+        title: "Depolarization — Na⁺ Influx",
+        desc: "A stimulus reaches threshold (~−55 mV). Voltage-gated Na⁺ channels open rapidly. Na⁺ rushes down its electrochemical gradient into the cell, making the inside less negative and driving depolarization toward +30 mV.",
+        list: [
+          "Voltage-gated Na⁺ channels open",
+          "Na⁺ moves into the cell (down concentration & electrical gradients)",
+          "Membrane potential rises sharply (depolarization)"
+        ],
+        voltageStart: -70, voltageEnd: 30,
+        naChannelOpen: true, kChannelOpen: false,
+        pumpActive: false, naFlow: "in", kFlow: "none",
+        curveSegment: "depolarize"
+      },
+      {
+        title: "Repolarization — K⁺ Outflux",
+        desc: "Na⁺ channels inactivate and close. Voltage-gated K⁺ channels open. K⁺ exits the cell, restoring negative charge inside and driving the membrane back toward resting potential.",
+        list: [
+          "Na⁺ channels close (inactivation gate)",
+          "Voltage-gated K⁺ channels open",
+          "K⁺ efflux repolarizes the membrane"
+        ],
+        voltageStart: 30, voltageEnd: -70,
+        naChannelOpen: false, kChannelOpen: true,
+        pumpActive: false, naFlow: "none", kFlow: "out",
+        curveSegment: "repolarize"
+      },
+      {
+        title: "Hyperpolarization",
+        desc: "K⁺ channels close slowly (delayed rectifier behavior). Extra K⁺ leaves before channels fully shut, briefly overshooting resting potential to about −85 mV — the hyperpolarization undershoot.",
+        list: [
+          "K⁺ channels begin closing but lag behind",
+          "Transient excess K⁺ efflux",
+          "Membrane potential dips below resting (−85 mV)"
+        ],
+        voltageStart: -70, voltageEnd: -85,
+        naChannelOpen: false, kChannelOpen: "closing",
+        pumpActive: false, naFlow: "none", kFlow: "out_slow",
+        curveSegment: "hyper"
+      },
+      {
+        title: "Return to Resting Potential",
+        desc: "All voltage-gated channels are closed. The Na⁺/K⁺ pump restores ion gradients lost during the spike, and the membrane returns to −70 mV, ready for another action potential.",
+        list: [
+          "K⁺ channels fully closed",
+          "Na⁺/K⁺ pump restores ion gradients",
+          "Resting potential re-established at −70 mV"
+        ],
+        voltageStart: -85, voltageEnd: -70,
+        naChannelOpen: false, kChannelOpen: false,
+        pumpActive: true, naFlow: "none", kFlow: "none",
+        curveSegment: "return"
+      }
+    ];
+
+    // Full AP curve keyframes (time ms, voltage mV)
+    const AP_CURVE = [
+      [0, -70], [0.5, -70], [1, -55], [2, 0], [3, 20], [4, 30],
+      [5, 10], [6, -40], [7, -70], [8, -85], [9, -80], [10, -74], [12, -70]
+    ];
+
+    // ── State ─────────────────────────────────────────────────────────
+    let currentStep = 0;
+    let simulating = false;
+    let animFrame = null;
+    let stepProgress = 0; // 0–1 within current step
+    let simTime = 0;
+    let particles = [];
+    let pumpPhase = 0;
+
+    const membraneCanvas = document.getElementById("membraneCanvas");
+    const voltageCanvas = document.getElementById("voltageCanvas");
+    const mCtx = membraneCanvas.getContext("2d");
+    const vCtx = voltageCanvas.getContext("2d");
+
+    // ── Particles for ion animation ───────────────────────────────────
+    function spawnParticle(type, direction, speed = 1) {
+      const W = membraneCanvas.width;
+      const membraneY = 190;
+      const channelX = type === "na" ? W * 0.38 : W * 0.62;
+      const spread = 18;
+      particles.push({
+        type,
+        x: channelX + (Math.random() - 0.5) * spread,
+        y: direction === "in" ? 55 : direction === "out" ? 325 : (Math.random() < 0.5 ? 55 : 325),
+        targetY: direction === "in" ? 280 : direction === "out" ? 100 : null,
+        vx: (Math.random() - 0.5) * 0.8,
+        vy: direction === "in" ? speed * (1.8 + Math.random()) : direction === "out" ? -speed * (1.8 + Math.random()) : 0,
+        life: 1,
+        pump: direction === "pump"
+      });
+    }
+
+    function initAmbientIons() {
+      particles = [];
+      const W = membraneCanvas.width;
+      for (let i = 0; i < 28; i++) {
+        particles.push({
+          type: Math.random() < 0.55 ? "na" : "k",
+          x: 30 + Math.random() * (W - 60),
+          y: Math.random() < 0.5 ? 40 + Math.random() * 80 : 260 + Math.random() * 80,
+          vx: (Math.random() - 0.5) * 0.3,
+          vy: (Math.random() - 0.5) * 0.3,
+          life: 1,
+          ambient: true
+        });
+      }
+    }
+
+    // ── Draw membrane cross-section ───────────────────────────────────
+    function drawMembrane(step, progress) {
+      const W = membraneCanvas.width;
+      const H = membraneCanvas.height;
+      const membraneY = 190;
+      const membraneH = 28;
+
+      mCtx.clearRect(0, 0, W, H);
+
+      // Compartments
+      const extraGrad = mCtx.createLinearGradient(0, 0, 0, membraneY);
+      extraGrad.addColorStop(0, "#0a1220");
+      extraGrad.addColorStop(1, "#111c30");
+      mCtx.fillStyle = extraGrad;
+      mCtx.fillRect(0, 0, W, membraneY - 2);
+
+      const intraGrad = mCtx.createLinearGradient(0, membraneY + membraneH, 0, H);
+      intraGrad.addColorStop(0, "#141f35");
+      intraGrad.addColorStop(1, "#0e1728");
+      mCtx.fillStyle = intraGrad;
+      mCtx.fillRect(0, membraneY + membraneH, W, H - membraneY - membraneH);
+
+      // Labels
+      mCtx.fillStyle = "#6b85a8";
+      mCtx.font = "600 13px system-ui, sans-serif";
+      mCtx.fillText("Extracellular fluid", 16, 28);
+      mCtx.fillText("(high Na⁺, low K⁺)", 16, 46);
+      mCtx.fillText("Intracellular fluid", 16, H - 22);
+      mCtx.fillText("(low Na⁺, high K⁺)", 16, H - 6);
+
+      // Membrane bilayer
+      mCtx.fillStyle = "#8fa8c4";
+      mCtx.fillRect(0, membraneY, W, 10);
+      mCtx.fillStyle = "#d4e2f0";
+      mCtx.fillRect(0, membraneY + 10, W, 8);
+      mCtx.fillStyle = "#8fa8c4";
+      mCtx.fillRect(0, membraneY + 18, W, 10);
+
+      // Channel positions
+      const naX = W * 0.38;
+      const kX = W * 0.62;
+      const pumpX = W * 0.12;
+
+      drawChannel(naX, membraneY, "Na⁺", step.naChannelOpen, "#ff5c5c");
+      drawChannel(kX, membraneY, "K⁺", step.kChannelOpen === true, "#ffd166", step.kChannelOpen === "closing");
+      drawPump(pumpX, membraneY, step.pumpActive, progress);
+
+      // Update & draw particles
+      updateParticles(step, progress);
+      drawParticles();
+
+      // Flow arrows
+      if (step.naFlow === "in") drawFlowArrow(naX, membraneY - 30, "down", "Na⁺ in", "#ff5c5c", progress);
+      if (step.kFlow === "out") drawFlowArrow(kX, membraneY + 50, "up", "K⁺ out", "#ffd166", progress);
+      if (step.kFlow === "out_slow") drawFlowArrow(kX, membraneY + 50, "up", "K⁺ out (slow close)", "#ffd166", progress * 0.6);
+    }
+
+    function drawChannel(x, memY, label, open, color, closing = false) {
+      const w = 22;
+      const h = 36;
+      const top = memY - 4;
+
+      mCtx.strokeStyle = color;
+      mCtx.lineWidth = 2.5;
+      mCtx.globalAlpha = open || closing ? 1 : 0.35;
+
+      // Channel protein outline
+      mCtx.beginPath();
+      mCtx.roundRect(x - w/2, top, w, h, 4);
+      mCtx.stroke();
+
+      if (open) {
+        mCtx.fillStyle = color + "44";
+        mCtx.fill();
+        // Open pore
+        mCtx.fillStyle = color;
+        mCtx.fillRect(x - 4, top + 6, 8, h - 12);
+        mCtx.fillStyle = "#fff";
+        mCtx.font = "bold 10px system-ui";
+        mCtx.textAlign = "center";
+        mCtx.fillText("OPEN", x, top - 8);
+      } else if (closing) {
+        mCtx.fillStyle = color + "22";
+        mCtx.fill();
+        mCtx.fillStyle = color;
+        mCtx.globalAlpha = 0.5 + 0.5 * Math.sin(Date.now() / 200);
+        mCtx.fillRect(x - 3, top + 10, 6, h - 20);
+        mCtx.globalAlpha = 1;
+        mCtx.fillStyle = "#ffd166";
+        mCtx.font = "bold 10px system-ui";
+        mCtx.textAlign = "center";
+        mCtx.fillText("CLOSING", x, top - 8);
+      } else {
+        mCtx.fillStyle = color + "18";
+        mCtx.fill();
+        // Gate line
+        mCtx.strokeStyle = color;
+        mCtx.beginPath();
+        mCtx.moveTo(x - 6, top + 14);
+        mCtx.lineTo(x + 6, top + 14);
+        mCtx.stroke();
+        mCtx.fillStyle = "#6b85a8";
+        mCtx.font = "10px system-ui";
+        mCtx.textAlign = "center";
+        mCtx.fillText("closed", x, top - 8);
+      }
+
+      mCtx.fillStyle = color;
+      mCtx.font = "600 11px system-ui";
+      mCtx.textAlign = "center";
+      mCtx.fillText(label + " channel", x, memY + 52);
+      mCtx.globalAlpha = 1;
+      mCtx.textAlign = "left";
+    }
+
+    function drawPump(x, memY, active, progress) {
+      const size = 36;
+      const top = memY - 6;
+
+      mCtx.save();
+      mCtx.translate(x, top + size/2);
+
+      // Pump body
+      mCtx.fillStyle = active ? "#7b68ee" : "#4a4278";
+      mCtx.strokeStyle = active ? "#a898ff" : "#6a6098";
+      mCtx.lineWidth = 2;
+      mCtx.beginPath();
+      mCtx.roundRect(-size/2, -size/2, size, size, 8);
+      mCtx.fill();
+      mCtx.stroke();
+
+      mCtx.fillStyle = "#fff";
+      mCtx.font = "bold 9px system-ui";
+      mCtx.textAlign = "center";
+      mCtx.fillText("Na⁺/K⁺", 0, -2);
+      mCtx.fillText("ATPase", 0, 9);
+
+      if (active) {
+        pumpPhase += 0.04;
+        const phase = pumpPhase % 1;
+        // Animated pump cycle
+        mCtx.strokeStyle = "#ff5c5c";
+        mCtx.lineWidth = 1.5;
+        for (let i = 0; i < 3; i++) {
+          const offset = (phase + i * 0.15) % 1;
+          mCtx.globalAlpha = 1 - offset;
+          mCtx.beginPath();
+          mCtx.moveTo(-8 + i * 8, -size/2 - 4);
+          mCtx.lineTo(-8 + i * 8, -size/2 - 4 - offset * 22);
+          mCtx.stroke();
+        }
+        mCtx.strokeStyle = "#ffd166";
+        for (let i = 0; i < 2; i++) {
+          const offset = (phase + 0.5 + i * 0.2) % 1;
+          mCtx.globalAlpha = 1 - offset;
+          mCtx.beginPath();
+          mCtx.moveTo(-4 + i * 8, size/2 + 4);
+          mCtx.lineTo(-4 + i * 8, size/2 + 4 + offset * 22);
+          mCtx.stroke();
+        }
+        mCtx.globalAlpha = 1;
+
+        mCtx.fillStyle = "#a898ff";
+        mCtx.font = "9px system-ui";
+        mCtx.fillText("3 Na⁺ ↑", 0, -size/2 - 28);
+        mCtx.fillText("2 K⁺ ↓", 0, size/2 + 38);
+      }
+
+      mCtx.restore();
+
+      mCtx.fillStyle = "#7b68ee";
+      mCtx.font = "600 11px system-ui";
+      mCtx.textAlign = "center";
+      mCtx.fillText("Na⁺/K⁺ pump", x, memY + 52);
+      mCtx.textAlign = "left";
+    }
+
+    function drawFlowArrow(x, y, dir, label, color, alpha) {
+      mCtx.save();
+      mCtx.globalAlpha = 0.5 + 0.5 * alpha;
+      mCtx.strokeStyle = color;
+      mCtx.fillStyle = color;
+      mCtx.lineWidth = 2.5;
+
+      const len = 28;
+      mCtx.beginPath();
+      if (dir === "down") {
+        mCtx.moveTo(x, y);
+        mCtx.lineTo(x, y + len);
+        mCtx.lineTo(x - 6, y + len - 8);
+        mCtx.moveTo(x, y + len);
+        mCtx.lineTo(x + 6, y + len - 8);
+      } else {
+        mCtx.moveTo(x, y + len);
+        mCtx.lineTo(x, y);
+        mCtx.lineTo(x - 6, y + 8);
+        mCtx.moveTo(x, y);
+        mCtx.lineTo(x + 6, y + 8);
+      }
+      mCtx.stroke();
+
+      mCtx.font = "600 11px system-ui";
+      mCtx.textAlign = "center";
+      mCtx.fillText(label, x, dir === "down" ? y - 8 : y + len + 18);
+      mCtx.restore();
+    }
+
+    function updateParticles(step, progress) {
+      // Spawn based on step
+      if (step.naFlow === "in" && Math.random() < 0.35 * progress) spawnParticle("na", "in", 1.2);
+      if (step.kFlow === "out" && Math.random() < 0.35 * progress) spawnParticle("k", "out", 1.2);
+      if (step.kFlow === "out_slow" && Math.random() < 0.18 * progress) spawnParticle("k", "out", 0.7);
+      if (step.pumpActive && Math.random() < 0.12) {
+        spawnParticle("na", "pump", 0.9);
+        spawnParticle("k", "pump", 0.9);
+      }
+
+      particles.forEach(p => {
+        if (p.ambient) {
+          p.x += p.vx;
+          p.y += p.vy;
+          if (p.x < 20 || p.x > membraneCanvas.width - 20) p.vx *= -1;
+          if (p.y < 20 || p.y > 120) p.vy *= -1;
+          if (p.y > 260 && p.y < 370) p.vy *= -1;
+        } else if (p.pump) {
+          if (p.type === "na") { p.y -= 1.5; p.life -= 0.015; }
+          else { p.y += 1.5; p.life -= 0.015; }
+        } else {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.life -= 0.008;
+        }
+      });
+
+      particles = particles.filter(p => p.life > 0 && p.y > 10 && p.y < membraneCanvas.height - 10);
+      if (particles.length > 120) particles = particles.slice(-120);
+    }
+
+    function drawParticles() {
+      particles.forEach(p => {
+        const color = p.type === "na" ? "#ff5c5c" : "#ffd166";
+        mCtx.globalAlpha = p.ambient ? 0.45 : p.life;
+        mCtx.fillStyle = color;
+        mCtx.beginPath();
+        mCtx.arc(p.x, p.y, p.ambient ? 4 : 5, 0, Math.PI * 2);
+        mCtx.fill();
+
+        mCtx.fillStyle = p.type === "na" ? "#fff" : "#333";
+        mCtx.font = "bold 7px system-ui";
+        mCtx.textAlign = "center";
+        mCtx.textBaseline = "middle";
+        mCtx.fillText(p.type === "na" ? "Na" : "K", p.x, p.y);
+        mCtx.textBaseline = "alphabetic";
+        mCtx.textAlign = "left";
+      });
+      mCtx.globalAlpha = 1;
+    }
+
+    // ── Voltage graph ─────────────────────────────────────────────────
+    function drawVoltageGraph(highlightStep, progress, simTimeMs) {
+      const W = voltageCanvas.width;
+      const H = voltageCanvas.height;
+      const pad = { l: 58, r: 24, t: 28, b: 44 };
+      const plotW = W - pad.l - pad.r;
+      const plotH = H - pad.t - pad.b;
+
+      vCtx.clearRect(0, 0, W, H);
+
+      const tMin = 0, tMax = 12;
+      const vMin = -100, vMax = 45;
+
+      const toX = t => pad.l + ((t - tMin) / (tMax - tMin)) * plotW;
+      const toY = v => pad.t + ((vMax - v) / (vMax - vMin)) * plotH;
+
+      // Grid
+      vCtx.strokeStyle = "#1e2d48";
+      vCtx.lineWidth = 1;
+      for (let v = -100; v <= 40; v += 20) {
+        vCtx.beginPath();
+        vCtx.moveTo(pad.l, toY(v));
+        vCtx.lineTo(W - pad.r, toY(v));
+        vCtx.stroke();
+        vCtx.fillStyle = "#5a7090";
+        vCtx.font = "11px system-ui";
+        vCtx.textAlign = "right";
+        vCtx.fillText(v, pad.l - 8, toY(v) + 4);
+      }
+
+      for (let t = 0; t <= 12; t += 2) {
+        vCtx.beginPath();
+        vCtx.moveTo(toX(t), pad.t);
+        vCtx.lineTo(toX(t), H - pad.b);
+        vCtx.stroke();
+        vCtx.fillStyle = "#5a7090";
+        vCtx.textAlign = "center";
+        vCtx.fillText(t, toX(t), H - pad.b + 18);
+      }
+
+      vCtx.fillStyle = "#8fa3c4";
+      vCtx.font = "600 12px system-ui";
+      vCtx.textAlign = "center";
+      vCtx.fillText("Time (ms)", W / 2, H - 6);
+      vCtx.save();
+      vCtx.translate(14, H / 2);
+      vCtx.rotate(-Math.PI / 2);
+      vCtx.fillText("Membrane potential (mV)", 0, 0);
+      vCtx.restore();
+
+      // Resting line
+      vCtx.setLineDash([4, 4]);
+      vCtx.strokeStyle = "#3a5070";
+      vCtx.beginPath();
+      vCtx.moveTo(pad.l, toY(-70));
+      vCtx.lineTo(W - pad.r, toY(-70));
+      vCtx.stroke();
+      vCtx.setLineDash([]);
+      vCtx.fillStyle = "#5a7090";
+      vCtx.font = "10px system-ui";
+      vCtx.textAlign = "left";
+      vCtx.fillText("resting (−70 mV)", pad.l + 4, toY(-70) - 6);
+
+      // Full AP curve
+      vCtx.strokeStyle = "#2a4068";
+      vCtx.lineWidth = 2;
+      vCtx.beginPath();
+      AP_CURVE.forEach(([t, v], i) => {
+        if (i === 0) vCtx.moveTo(toX(t), toY(v));
+        else vCtx.lineTo(toX(t), toY(v));
+      });
+      vCtx.stroke();
+
+      // Highlight segment for current step
+      const segments = [
+        { t0: 0, t1: 0.5, color: "#3dd6c6" },
+        { t0: 0.5, t1: 4, color: "#ff5c5c" },
+        { t0: 4, t1: 7, color: "#ffd166" },
+        { t0: 7, t1: 8.5, color: "#a78bfa" },
+        { t0: 8.5, t1: 12, color: "#3dd6c6" }
+      ];
+
+      segments.forEach((seg, i) => {
+        const isActive = i === highlightStep;
+        vCtx.strokeStyle = isActive ? seg.color : "transparent";
+        vCtx.lineWidth = isActive ? 3.5 : 0;
+        if (!isActive) return;
+
+        vCtx.beginPath();
+        let started = false;
+        AP_CURVE.forEach(([t, v], idx) => {
+          if (t >= seg.t0 && t <= seg.t1) {
+            if (!started) { vCtx.moveTo(toX(t), toY(v)); started = true; }
+            else vCtx.lineTo(toX(t), toY(v));
+          }
+          if (idx < AP_CURVE.length - 1) {
+            const [t2, v2] = AP_CURVE[idx + 1];
+            if (t < seg.t1 && t2 > seg.t0 && t2 <= seg.t1) {
+              if (!started) { vCtx.moveTo(toX(t2), toY(v2)); started = true; }
+            }
+          }
+        });
+        // Interpolate partial progress within step
+        const segDuration = seg.t1 - seg.t0;
+        const partialT = seg.t0 + segDuration * progress;
+        vCtx.lineTo(toX(Math.min(partialT, seg.t1)), toY(interpolateVoltage(partialT)));
+        vCtx.stroke();
+
+        // Glowing dot at current point
+        const cv = interpolateVoltage(partialT);
+        vCtx.fillStyle = seg.color;
+        vCtx.shadowColor = seg.color;
+        vCtx.shadowBlur = 12;
+        vCtx.beginPath();
+        vCtx.arc(toX(partialT), toY(cv), 6, 0, Math.PI * 2);
+        vCtx.fill();
+        vCtx.shadowBlur = 0;
+      });
+
+      // Simulation trace
+      if (simTimeMs > 0) {
+        vCtx.strokeStyle = "#4fc3f7";
+        vCtx.lineWidth = 2.5;
+        vCtx.beginPath();
+        let started = false;
+        for (let t = 0; t <= simTimeMs; t += 0.05) {
+          const v = interpolateVoltage(t);
+          const x = toX(t);
+          const y = toY(v);
+          if (!started) { vCtx.moveTo(x, y); started = true; }
+          else vCtx.lineTo(x, y);
+        }
+        vCtx.stroke();
+
+        const cv = interpolateVoltage(simTimeMs);
+        vCtx.fillStyle = "#4fc3f7";
+        vCtx.beginPath();
+        vCtx.arc(toX(simTimeMs), toY(cv), 7, 0, Math.PI * 2);
+        vCtx.fill();
+      }
+
+      // Phase labels
+      const labels = [
+        { t: 0.2, v: -55, text: "Rest" },
+        { t: 2.5, v: 38, text: "Depolarize" },
+        { t: 5.5, v: -20, text: "Repolarize" },
+        { t: 7.8, v: -92, text: "Hyper" },
+        { t: 10.5, v: -62, text: "Recovery" }
+      ];
+      labels.forEach(l => {
+        vCtx.fillStyle = "#6b85a8";
+        vCtx.font = "10px system-ui";
+        vCtx.textAlign = "center";
+        vCtx.fillText(l.text, toX(l.t), toY(l.v));
+      });
+    }
+
+    function interpolateVoltage(t) {
+      for (let i = 0; i < AP_CURVE.length - 1; i++) {
+        const [t0, v0] = AP_CURVE[i];
+        const [t1, v1] = AP_CURVE[i + 1];
+        if (t >= t0 && t <= t1) {
+          const f = (t - t0) / (t1 - t0);
+          return v0 + (v1 - v0) * f;
+        }
+      }
+      return -70;
+    }
+
+    function stepTimeRange(stepIndex) {
+      const ranges = [[0, 0.5], [0.5, 4], [4, 7], [7, 8.5], [8.5, 12]];
+      return ranges[stepIndex];
+    }
+
+    function getCurrentVoltage(stepIndex, progress) {
+      const [t0, t1] = stepTimeRange(stepIndex);
+      return interpolateVoltage(t0 + (t1 - t0) * progress);
+    }
+
+    // ── UI updates ────────────────────────────────────────────────────
+    function updateInfo(stepIndex) {
+      const s = STEPS[stepIndex];
+      document.getElementById("infoTitle").textContent = s.title;
+      document.getElementById("infoDesc").textContent = s.desc;
+      const list = document.getElementById("infoList");
+      list.innerHTML = s.list.map(li => `<li>${li}</li>`).join("");
+      document.getElementById("membraneBadge").textContent = `Step ${stepIndex + 1} of 5`;
+    }
+
+    function setStep(index, resetProgress = true) {
+      currentStep = Math.max(0, Math.min(4, index));
+      if (resetProgress) stepProgress = 0;
+      simulating = false;
+      simTime = 0;
+
+      document.querySelectorAll(".step-btn").forEach(btn => {
+        btn.classList.toggle("active", parseInt(btn.dataset.step) === currentStep);
+      });
+      document.getElementById("prevBtn").disabled = currentStep === 0;
+      document.getElementById("nextBtn").disabled = currentStep === 4;
+      document.getElementById("simProgress").value = 0;
+      document.getElementById("timeReadout").textContent = "t = 0 ms";
+
+      updateInfo(currentStep);
+      render();
+    }
+
+    function render() {
+      const step = STEPS[currentStep];
+      const v = getCurrentVoltage(currentStep, stepProgress);
+      document.getElementById("voltageReadout").textContent = `${v >= 0 ? "+" : ""}${Math.round(v)} mV`;
+
+      drawMembrane(step, stepProgress);
+      drawVoltageGraph(currentStep, stepProgress, simulating ? simTime : 0);
+    }
+
+    function animateStep() {
+      stepProgress += 0.012;
+      if (stepProgress >= 1) {
+        stepProgress = 1;
+        render();
+        return;
+      }
+      render();
+      animFrame = requestAnimationFrame(animateStep);
+    }
+
+    function runFullSimulation() {
+      simulating = true;
+      simTime = 0;
+      stepProgress = 0;
+      currentStep = 0;
+      updateInfo(0);
+
+      const duration = 8000; // ms real time for 12 ms simulated
+      const start = performance.now();
+
+      function tick(now) {
+        const elapsed = now - start;
+        const frac = Math.min(1, elapsed / duration);
+        simTime = frac * 12;
+
+        // Map sim time to step
+        if (simTime < 0.5) currentStep = 0;
+        else if (simTime < 4) currentStep = 1;
+        else if (simTime < 7) currentStep = 2;
+        else if (simTime < 8.5) currentStep = 3;
+        else currentStep = 4;
+
+        const [t0, t1] = stepTimeRange(currentStep);
+        stepProgress = Math.min(1, (simTime - t0) / (t1 - t0));
+
+        document.querySelectorAll(".step-btn").forEach(btn => {
+          btn.classList.toggle("active", parseInt(btn.dataset.step) === currentStep);
+        });
+
+        document.getElementById("simProgress").value = frac * 100;
+        document.getElementById("timeReadout").textContent = `t = ${simTime.toFixed(1)} ms`;
+
+        const v = interpolateVoltage(simTime);
+        document.getElementById("voltageReadout").textContent = `${v >= 0 ? "+" : ""}${Math.round(v)} mV`;
+
+        drawMembrane(STEPS[currentStep], stepProgress);
+        drawVoltageGraph(currentStep, stepProgress, simTime);
+
+        if (frac < 1) {
+          animFrame = requestAnimationFrame(tick);
+        } else {
+          simulating = false;
+          document.getElementById("prevBtn").disabled = currentStep === 0;
+          document.getElementById("nextBtn").disabled = currentStep === 4;
+        }
+      }
+
+      if (animFrame) cancelAnimationFrame(animFrame);
+      animFrame = requestAnimationFrame(tick);
+    }
+
+    // ── Event listeners ───────────────────────────────────────────────
+    document.querySelectorAll(".step-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        if (animFrame) cancelAnimationFrame(animFrame);
+        setStep(parseInt(btn.dataset.step));
+      });
+    });
+
+    document.getElementById("prevBtn").addEventListener("click", () => {
+      if (animFrame) cancelAnimationFrame(animFrame);
+      setStep(currentStep - 1);
+    });
+
+    document.getElementById("nextBtn").addEventListener("click", () => {
+      if (animFrame) cancelAnimationFrame(animFrame);
+      setStep(currentStep + 1);
+    });
+
+    document.getElementById("simulateBtn").addEventListener("click", () => {
+      if (animFrame) cancelAnimationFrame(animFrame);
+      initAmbientIons();
+      runFullSimulation();
+    });
+
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      if (animFrame) cancelAnimationFrame(animFrame);
+      initAmbientIons();
+      setStep(0);
+    });
+
+    // Animate current step on click of membrane panel
+    membraneCanvas.addEventListener("click", () => {
+      if (simulating) return;
+      if (animFrame) cancelAnimationFrame(animFrame);
+      stepProgress = 0;
+      animateStep();
+    });
+
+    // ── Init ──────────────────────────────────────────────────────────
+    initAmbientIons();
+    setStep(0);
+
+    // Idle ambient animation
+    function idleLoop() {
+      if (!simulating && stepProgress === 0) {
+        drawMembrane(STEPS[currentStep], 0.3 + 0.2 * Math.sin(Date.now() / 800));
+        drawVoltageGraph(currentStep, 0, 0);
+      }
+      requestAnimationFrame(idleLoop);
+    }
+    idleLoop();
+  </script>
+</body>
+</html>
